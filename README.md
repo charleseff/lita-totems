@@ -4,6 +4,8 @@ Totems handler for [Lita](https://github.com/jimmycuadra/lita)
 
 ## Installation
 
+NOT YET WORKING, DON'T ATTEMPT TO USE YET
+
 Add lita-totems to your Lita instance's Gemfile:
 
 ``` ruby
