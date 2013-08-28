@@ -3,8 +3,8 @@ Gem::Specification.new do |spec|
   spec.version       = "0.0.1"
   spec.authors       = ["Charles Finkel"]
   spec.email         = ["cf@dropbox.com"]
-  spec.description   = %q{TODO: Add a description}
-  spec.summary       = %q{TODO: Add a summary}
+  spec.description   = %q{Totems handler for Lita)}
+  spec.summary       = %q{Adds support to Lita for Totems}
   spec.homepage      = "TODO: Add a homepage"
   spec.license       = "MIT"
 
