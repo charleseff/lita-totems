@@ -1,4 +1,5 @@
 require "lita"
+require 'active_support/core_ext/integer/inflections'
 
 module Lita
   module Handlers
@@ -44,27 +45,43 @@ module Lita
           })
 
       def destroy(response)
-        totem = response[:totem]
+        totem = response.match_data[:totem]
         if redis.exists("totem:#{totem}")
           redis.del("totem:#{totem}")
           redis.del("list:#{totem}")
-          response.reply("Destroyed totem #{totem}.")
+          response.reply(%{Destroyed totem "#{totem}".})
         else
-          response.reply("Error: totem #{totem} doesn't exist.")
+          response.reply(%{Error: totem "#{totem}" doesn't exist.})
         end
       end
 
       def create(response)
-        totem = response[:totem]
+        totem = response.match_data[:totem]
+
         if redis.exists("totem:#{totem}")
-          response.reply "Error: totem #{totem} already exists."
+          response.reply %{Error: totem "#{totem}" already exists.}
         else
           redis.set("totem:#{totem}", 1)
-          response.reply "Created totem #{totem}."
+          response.reply %{Created totem "#{totem}".}
         end
 
       end
 
+      def add(response)
+        totem = response.match_data[:totem]
+        unless redis.exists("totem:#{totem}")
+          response.reply %{Error: there is no totem "#{totem}".}
+          return
+        end
+
+        queue_size = redis.lpush("list:#{totem}", response.user.id)
+        if queue_size == 1
+          response.reply(%{#{response.user.name}, you now have totem "#{totem}".})
+        else
+          in_line = queue_size - 1
+          response.reply(%{#{response.user.name}, you are #{in_line.ordinalize} in line for totem "#{totem}".})
+        end
+      end
 
     end
 
