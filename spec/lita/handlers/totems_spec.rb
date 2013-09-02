@@ -9,6 +9,33 @@ describe Lita::Handlers::Totems, lita_handler: true do
   it { routes("totems kick foo").to(:kick) }
   it { routes("totems kick foo bob").to(:kick) }
 
+  let(:totem_creator) { Class.new do
+    def initialize
+      @id = 0
+    end
+
+    def create(container)
+      @id  += 1
+      name = "totem_#{@id}"
+      container.send_message("totems create #{name}")
+      name
+    end
+  end.new
+  }
+
+  let(:carl) { Lita::User.create(123, name: "Carl") }
+  let(:user_generator) { Class.new do
+    def initialize
+      @id = 0
+    end
+
+    def generate
+      @id += 1
+      Lita::User.create(@id, name: "person_#{@id}")
+    end
+  end.new
+  }
+
   describe "create" do
     it "creates a totem" do
       send_message('totems create chicken')
@@ -46,18 +73,6 @@ describe Lita::Handlers::Totems, lita_handler: true do
   end
 
   describe "add" do
-    let(:carl) { Lita::User.create(123, name: "Carl") }
-    let(:user_generator) { Class.new do
-      def initialize
-        @id = 0
-      end
-
-      def generate
-        @id += 1
-        Lita::User.create(@id, name: "person_#{@id}")
-      end
-    end.new
-    }
 
     context "totem exists" do
       before do
@@ -86,11 +101,74 @@ describe Lita::Handlers::Totems, lita_handler: true do
       it "lets user know" do
         send_message("totems add chicken", as: carl)
         expect(replies.last).to eq('Error: there is no totem "chicken".')
-
       end
 
     end
 
+  end
+
+  describe "yield" do
+    before do
+      send_message("totems create chicken")
+    end
+
+    context "when user has one totem" do
+      before do
+        send_message("totems add chicken", as: carl)
+      end
+
+      context "someone else is in line" do
+        let(:another_user) { user_generator.generate }
+        before do
+          send_message("totems add chicken", as: another_user)
+        end
+        it "yields that totem, gives to the next person in line" do
+          send_message("totems yield", as: carl)
+          expect(replies.last).to eq("You have yielded the totem to #{another_user.id}.")
+        end
+      end
+      context "nobody else is in line" do
+        it "yields the totem" do
+          send_message("totems yield", as: carl)
+          expect(replies.last).to eq(%{You have yielded the "chicken" totem.})
+        end
+      end
+    end
+    context "when user has no totems" do
+      it "sends an error" do
+        send_message("totems yield", as: carl)
+        expect(replies.last).to eq("Error: You do not have any totems to yield.")
+      end
+    end
+    context "when user has multiple totems" do
+      let(:other_totem) { totem_creator.create(self) }
+      before do
+        send_message("totems add chicken", as: carl)
+        send_message("totems add #{other_totem}", as: carl)
+      end
+      context "when specifying a totem" do
+        context "user doesn't have that totem" do
+          it "sends error message" do
+            send_message("totems yield duck", as: carl)
+            expect(replies.last).to eq(%{Error: You don't own the "duck" totem.})
+          end
+        end
+        context "user has that totem" do
+          it "yields totem" do
+            send_message("totems yield chicken", as: carl)
+            expect(replies.last).to eq(%{You have yielded the "chicken" totem.})
+          end
+
+        end
+      end
+      context "when not specifying a totem" do
+        it "sends a message about which totem it can yield" do
+          send_message("totems yield", as: carl)
+          expect(replies.last).to eq(%{You must specify a totem to yield.  Totems you own: ["chicken", "#{other_totem}"]})
+        end
+      end
+
+    end
 
   end
 

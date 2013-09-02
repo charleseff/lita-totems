@@ -40,13 +40,14 @@ TODO: Describe the plugin's features and how to use them.
 			* if user has multiple totems but doesn't specify totem to yield, lita tells user which totems she has to yield (and provides commands)
 		* should alert people in queue that they are closer in the queue
 	* kick someone from totem/queue
-		* options: with our without username.  without username, kicks person holding the totem.  with username, kicks person from the queue (or the totemholder)
 		* route: kick
-		* example: kick totem <username>
+		* example: kick totem
 		* notifies user that he/she's been kicked from queue
 		* should alert people in queue that they are closer in the queue
 	* info (get all totem info, plus queues you're on as primary)
+	    * route : info, list
 	    * route: just "totems" or "totems info"
+	    * if passed a totem name, gets that totem's
 * extras:
     * totem groups
 	
