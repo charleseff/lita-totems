@@ -110,8 +110,7 @@ module Lita
         if totems_owned_by_user.empty?
           response.reply "Error: You do not have any totems to yield."
         elsif totems_owned_by_user.size == 1
-          totem = totems_owned_by_user[0]
-          yield_totem(totem, user_id, response)
+          yield_totem(totems_owned_by_user[0], user_id, response)
         else # totems count > 1
           totem_specified = response.match_data[:totem]
           if totem_specified
@@ -120,7 +119,6 @@ module Lita
             else
               response.reply %{Error: You don't own the "#{totem_specified}" totem.}
             end
-
           else
             response.reply "You must specify a totem to yield.  Totems you own: #{totems_owned_by_user.sort}"
           end
@@ -133,7 +131,7 @@ module Lita
         next_user_id = redis.lpop("totem/#{totem}/list")
         if next_user_id
           redis.sadd("user/#{next_user_id}/totems", totem)
-          #TODO_TELL_OTHER_USER_HE_HAS_TOTEM
+          robot.send_messages(User.new(next_user_id), %{You are now in possession of totem "#{totem}."})
           response.reply "You have yielded the totem to #{next_user_id}."
         else
           response.reply %{You have yielded the "#{totem}" totem.}

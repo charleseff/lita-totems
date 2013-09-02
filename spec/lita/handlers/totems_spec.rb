@@ -124,6 +124,10 @@ describe Lita::Handlers::Totems, lita_handler: true do
         end
         it "yields that totem, gives to the next person in line" do
           send_message("totems yield", as: carl)
+          # todo: check for message to other user
+          other_user_message_receipt = message_receipts[-2]
+          expect(other_user_message_receipt.target.id).to eq(another_user.id)
+          expect(other_user_message_receipt.message).to eq(%{You are now in possession of totem "chicken."})
           expect(replies.last).to eq("You have yielded the totem to #{another_user.id}.")
         end
       end
@@ -169,6 +173,10 @@ describe Lita::Handlers::Totems, lita_handler: true do
       end
 
     end
+
+  end
+
+  describe "kick" do
 
   end
 

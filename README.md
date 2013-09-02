@@ -27,17 +27,17 @@ TODO: Describe the plugin's features and how to use them.
 ## Todo:
 
 * core routes:
-	* Create a totem (set ACL?)
+	C Create a totem (set ACL?)
 		* create
-	* Destroy a totem
+	C Destroy a totem
 		* destroy, delete
-	* add queue for totem
+	C add queue for totem
 		* route: add, join, take, queue
 	* yield a totem
-		* route: yield, finish, leave, done, complete, remove
+		C route: yield, finish, leave, done, complete, remove
 		* should also notify next person
-		* should not require totem name if user only has one totem
-			* if user has multiple totems but doesn't specify totem to yield, lita tells user which totems she has to yield (and provides commands)
+		C should not require totem name if user only has one totem
+			C if user has multiple totems but doesn't specify totem to yield, lita tells user which totems she has to yield (and provides commands)
 		* should alert people in queue that they are closer in the queue
 	* kick someone from totem/queue
 		* route: kick
