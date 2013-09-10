@@ -5,7 +5,7 @@ Gem::Specification.new do |spec|
   spec.email         = ["cf@dropbox.com"]
   spec.description   = %q{Totems handler for Lita)}
   spec.summary       = %q{Adds support to Lita for Totems}
-  spec.homepage      = "TODO: Add a homepage"
+  spec.homepage      = "https://github.com/charleseff/lita-totems"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files`.split($/)
