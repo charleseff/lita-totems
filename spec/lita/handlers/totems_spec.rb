@@ -8,6 +8,9 @@ describe Lita::Handlers::Totems, lita_handler: true do
   it { doesnt_route("tote add foo").to(:add) }
   it { routes("totems kick foo").to(:kick) }
   it { routes("totems kick foo bob").to(:kick) }
+  it { routes("totems").to(:info) }
+  it { routes("totems info").to(:info) }
+  it { routes("totems info chicken").to(:info) }
 
   let(:totem_creator) { Class.new do
     def initialize
@@ -36,6 +39,7 @@ describe Lita::Handlers::Totems, lita_handler: true do
   end.new
   }
   let(:another_user) { user_generator.generate }
+  let(:yet_another_user) { user_generator.generate }
 
   describe "create" do
     it "creates a totem" do
@@ -207,6 +211,49 @@ describe Lita::Handlers::Totems, lita_handler: true do
         expect(replies.last).to eq(%{Error: Nobody owns totem "chicken" so you can't kick someone from it.})
       end
     end
+  end
+
+  describe "info" do
+    before do
+      send_message("totems create chicken")
+      send_message("totems create duck")
+      send_message("totems create ball")
+      send_message("totems add chicken", as: carl)
+      send_message("totems add chicken", as: another_user)
+      send_message("totems add duck", as: yet_another_user)
+      send_message("totems add duck", as: carl)
+
+    end
+    context "totem is passed" do
+      it "shows info for just that totem" do
+        send_message("totems info chicken")
+        expect(replies.last).to eq <<-END
+1. User id #{carl.id}
+2. User id #{another_user.id}
+        END
+
+      end
+    end
+
+    context "totem isn't passed" do
+      it "shows info for all totems" do
+        send_message("totems info")
+        expect(replies.last).to include <<-END
+- chicken
+  1. User id #{carl.id}
+  2. User id #{another_user.id}
+        END
+        expect(replies.last).to include <<-END
+- duck
+  1. User id #{yet_another_user.id}
+  2. User id #{carl.id}
+        END
+        expect(replies.last).to include <<-END
+- ball
+        END
+      end
+    end
+
   end
 
 end

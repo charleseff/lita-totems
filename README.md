@@ -45,10 +45,11 @@ TODO: Describe the plugin's features and how to use them.
 		C notifies user that he/she's been kicked from queue
 		C should alert people in queue that they are closer in the queue
 	* info (get all totem info, plus queues you're on as primary)
-	    * route : info, list
-	    * route: just "totems" or "totems info"
-	    * if passed a totem name, gets that totem's
+	    C route : info, list
+	    C route: just "totems" or "totems info"
+	    C if passed a totem name, gets that totem's queue
 * extras:
     * totem groups
 * refactor:
     * convert to celluloid and DAO's.  Completely hide redis commands behind DAOs
+* fix "user id" issue, use name instead
