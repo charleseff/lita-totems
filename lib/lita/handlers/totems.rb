@@ -49,7 +49,6 @@ module Lita
 
 
       route(
-        #/^totems?(\s+info(\s+(?<totem>\w+))?)?$/,
         %r{
             ^totems?
             (\s+info?
@@ -167,9 +166,9 @@ module Lita
       end
 
       def info(response)
-        totem = response.match_data[:totem]
-        resp  = if totem.present?
-                  list_users_print(totem)
+        totem_param = response.match_data[:totem]
+        resp  = if totem_param.present?
+                  list_users_print(totem_param)
                 else
                   r = "Totems:\n"
                   redis.smembers("totems").each do |totem|
