@@ -35,6 +35,7 @@ describe Lita::Handlers::Totems, lita_handler: true do
     end
   end.new
   }
+  let(:another_user) { user_generator.generate }
 
   describe "create" do
     it "creates a totem" do
@@ -118,16 +119,16 @@ describe Lita::Handlers::Totems, lita_handler: true do
       end
 
       context "someone else is in line" do
-        let(:another_user) { user_generator.generate }
         before do
           send_message("totems add chicken", as: another_user)
         end
         it "yields that totem, gives to the next person in line" do
+          expect(robot).to receive(:send_messages) do |target, message|
+            expect(target.id).to eq(another_user.id)
+            expect(message).to eq(%{You are now in possession of totem "chicken."})
+          end
           send_message("totems yield", as: carl)
           # todo: check for message to other user
-          other_user_message_receipt = message_receipts[-2]
-          expect(other_user_message_receipt.target.id).to eq(another_user.id)
-          expect(other_user_message_receipt.message).to eq(%{You are now in possession of totem "chicken."})
           expect(replies.last).to eq("You have yielded the totem to #{another_user.id}.")
         end
       end
@@ -177,7 +178,35 @@ describe Lita::Handlers::Totems, lita_handler: true do
   end
 
   describe "kick" do
+    before do
+      send_message("totems create chicken")
+    end
+    context "there is a user owning the totem" do
+      before do
+        send_message("totems add chicken", as: another_user)
+        send_message("totems add chicken", as: carl)
+      end
+      it "should notify that user that she has been kicked" do
+        expect(robot).to receive(:send_messages) do |target, message|
+          expect(target.id).to eq(another_user.id)
+          expect(message).to eq(%{You have been kicked from totem "chicken".})
+        end
+        send_message("totems kick chicken")
 
+      end
+      it "should notify next user in line that she now has the totem" do
+        send_message("totems kick chicken")
+        expect(replies.last).to eq(%{You are now in possession of totem "chicken".})
+      end
+
+    end
+
+    context "nobody owns that totem" do
+      it "sends an error" do
+        send_message("totems kick chicken")
+        expect(replies.last).to eq(%{Error: Nobody owns totem "chicken" so you can't kick someone from it.})
+      end
+    end
   end
 
 end

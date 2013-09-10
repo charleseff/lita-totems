@@ -1,8 +1,7 @@
 require "lita"
 require 'active_support/core_ext/integer/inflections'
+require 'active_support/core_ext/object/blank'
 require 'redis-semaphore'
-
-# todo: use celluloid?
 
 module Lita
   module Handlers
@@ -85,7 +84,7 @@ module Lita
         token_acquired = false
         queue_size     = nil
         Redis::Semaphore.new("totem/#{totem}", redis: redis).lock do
-          if redis.llen("totem/#{totem}/list") == 0 && redis.get("totem/#{totem}/owning_user_id").nil?
+          if redis.llen("totem/#{totem}/list") == 0 && redis.get("totem/#{totem}/owning_user_id").blank?
             # take it:
             token_acquired = true
             redis.set("totem/#{totem}/owning_user_id", user_id)
@@ -125,6 +124,30 @@ module Lita
         end
       end
 
+      def kick(response)
+        totem = response.match_data[:totem]
+        unless redis.exists("totem/#{totem}")
+          response.reply %{Error: there is no totem "#{totem}".}
+          return
+        end
+
+        past_owning_user_id = redis.get("totem/#{totem}/owning_user_id")
+        if past_owning_user_id.nil?
+          response.reply %{Error: Nobody owns totem "#{totem}" so you can't kick someone from it.}
+          return
+        end
+
+        redis.srem("user/#{past_owning_user_id}/totems", totem)
+        robot.send_messages(User.new(past_owning_user_id), %{You have been kicked from totem "#{totem}".})
+        next_user_id = redis.lpop("totem/#{totem}/list")
+        redis.set("totem/#{totem}/owning_user_id", next_user_id)
+        if next_user_id
+          redis.sadd("user/#{next_user_id}/totems", totem)
+          robot.send_messages(User.new(next_user_id), %{You are now in possession of totem "#{totem}".})
+        end
+
+      end
+
       private
       def yield_totem(totem, user_id, response)
         redis.srem("user/#{user_id}/totems", totem)
@@ -136,6 +159,7 @@ module Lita
         else
           response.reply %{You have yielded the "#{totem}" totem.}
         end
+        redis.set("totem/#{totem}/owning_user_id", next_user_id)
       end
     end
 
