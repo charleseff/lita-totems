@@ -56,11 +56,11 @@ module Lita
             )?
             $
             }x,
-            :info,
-            help: {
-              'totems info'       => "Shows info of all totems queues",
-              'totems info TOTEM' => 'Shows info of just one totem'
-            })
+        :info,
+        help: {
+          'totems info'       => "Shows info of all totems queues",
+          'totems info TOTEM' => 'Shows info of just one totem'
+        })
 
       def destroy(response)
         totem = response.match_data[:totem]
@@ -167,28 +167,34 @@ module Lita
 
       def info(response)
         totem_param = response.match_data[:totem]
-        resp  = if totem_param.present?
-                  list_users_print(totem_param)
-                else
-                  r = "Totems:\n"
-                  redis.smembers("totems").each do |totem|
-                    r += "- #{totem}\n"
-                    r += list_users_print(totem, '  ')
-                  end
-                  r
-                end
+        resp        = if totem_param.present?
+                        list_users_print(totem_param)
+                      else
+                        users_cache = new_users_cache
+                        r           = "Totems:\n"
+                        redis.smembers("totems").each do |totem|
+                          r += "- #{totem}\n"
+                          r += list_users_print(totem, '  ', users_cache)
+                        end
+                        r
+                      end
         response.reply resp
       end
 
       private
-      def list_users_print(totem, prefix='')
+      def new_users_cache
+        Hash.new { |h, id| h[id] = Lita::User.find_by_id(id) }
+      end
+
+      def list_users_print(totem, prefix='', users_cache=new_users_cache)
         str      = ''
         first_id = redis.get("totem/#{totem}/owning_user_id")
         if first_id
-          str  += "#{prefix}1. User id #{first_id}\n"
+
+          str  += "#{prefix}1. #{users_cache[first_id].name}\n"
           rest = redis.lrange("totem/#{totem}/list", 0, -1)
           rest.each_with_index do |user_id, index|
-            str += "#{prefix}#{index+2}. User id #{user_id}\n"
+            str += "#{prefix}#{index+2}. #{users_cache[user_id].name}\n"
           end
         end
         str

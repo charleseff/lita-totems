@@ -228,8 +228,8 @@ describe Lita::Handlers::Totems, lita_handler: true do
       it "shows info for just that totem" do
         send_message("totems info chicken")
         expect(replies.last).to eq <<-END
-1. User id #{carl.id}
-2. User id #{another_user.id}
+1. Carl
+2. Test User
         END
 
       end
@@ -240,13 +240,13 @@ describe Lita::Handlers::Totems, lita_handler: true do
         send_message("totems info")
         expect(replies.last).to include <<-END
 - chicken
-  1. User id #{carl.id}
-  2. User id #{another_user.id}
+  1. Carl
+  2. Test User
         END
         expect(replies.last).to include <<-END
 - duck
-  1. User id #{yet_another_user.id}
-  2. User id #{carl.id}
+  1. person_2
+  2. Carl
         END
         expect(replies.last).to include <<-END
 - ball
