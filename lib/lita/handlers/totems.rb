@@ -2,6 +2,7 @@ require "lita"
 require 'active_support/core_ext/integer/inflections'
 require 'active_support/core_ext/object/blank'
 require 'redis-semaphore'
+require 'lita/handlers/totems_lib/totem'
 
 module Lita
   module Handlers
@@ -13,6 +14,10 @@ module Lita
         (#{action_capture_group})\s+
         (?<totem>\w+)
         }x
+      end
+
+      def self.totems
+        @totems ||= {}
       end
 
       route(route_regex("add|join|take|queue"), :add,
@@ -77,14 +82,13 @@ module Lita
       end
 
       def create(response)
-        totem = response.match_data[:totem]
+        totem_name = response.match_data[:totem]
 
-        if redis.exists("totem/#{totem}")
-          response.reply %{Error: totem "#{totem}" already exists.}
+        if totems[totem_name].present?
+          response.reply %{Error: totem "#{totem_name}" already exists.}
         else
-          redis.set("totem/#{totem}", 1)
-          redis.sadd("totems", totem)
-          response.reply %{Created totem "#{totem}".}
+          totems[totem_name] = Lita::Handlers::TotemsLib::Totem.new(totem_name)
+          response.reply %{Created totem "#{totem_name}".}
         end
 
       end
@@ -212,6 +216,11 @@ module Lita
         end
         redis.set("totem/#{totem}/owning_user_id", next_user_id)
       end
+
+      def totems
+        self.class.totems
+      end
+
     end
 
     Lita.register_handler(Totems)
