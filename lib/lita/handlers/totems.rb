@@ -1,11 +1,13 @@
 require "lita"
 require 'active_support/core_ext/integer/inflections'
 require 'active_support/core_ext/object/blank'
-require 'redis-semaphore'
 require 'lita/handlers/totems_lib/totem'
+require 'lita/handlers/totems_lib/creator'
+require 'set'
 
 module Lita
   module Handlers
+    # a new Handler class shouldn't be created for each call, is it?
     class Totems < Handler
 
       def self.route_regex(action_capture_group)
@@ -16,8 +18,19 @@ module Lita
         }x
       end
 
+      # a Map from totem name to Totem object
+      # not to be altered by this class
       def self.totems
         @totems ||= {}
+      end
+
+      def self.creator
+        @creator = TotemsLib::Creator.new(totems, totem_owners)
+      end
+
+      # a Map from Users to Sets of Totems
+      def self.totem_owners
+        @totem_owners = Hash.new(Set[])
       end
 
       route(route_regex("add|join|take|queue"), :add,
@@ -68,32 +81,45 @@ module Lita
         })
 
       def destroy(response)
-        totem = response.match_data[:totem]
-        if redis.exists("totem/#{totem}")
-          redis.del("totem/#{totem}")
-          redis.del("totem/#{totem}/list")
-          redis.srem("totems", totem)
-          owning_user_id = redis.get("totem/#{totem}/owning_user_id")
-          redis.srem("user/#{owning_user_id}/totems", totem) if owning_user_id
-          response.reply(%{Destroyed totem "#{totem}".})
+        totem_name = response.match_data[:totem]
+        if self.class.creator.destroy_if_exists(totem_name)
+          response.reply(%{Destroyed totem "#{totem_name}".})
         else
-          response.reply(%{Error: totem "#{totem}" doesn't exist.})
+          response.reply(%{Error: totem "#{totem_name}" doesn't exist.})
         end
       end
 
       def create(response)
         totem_name = response.match_data[:totem]
 
-        if totems[totem_name].present?
-          response.reply %{Error: totem "#{totem_name}" already exists.}
-        else
-          totems[totem_name] = Lita::Handlers::TotemsLib::Totem.new(totem_name)
+        if self.class.creator.create_if_doesnt_exist(totem_name)
           response.reply %{Created totem "#{totem_name}".}
+        else
+          response.reply %{Error: totem "#{totem_name}" already exists.}
         end
 
       end
 
       def add(response)
+        totem_name = response.match_data[:totem]
+        totem      = totems[totem_name]
+
+        if totem.nil?
+          response.reply %{Error: there is no totem "#{totem}".}
+          return
+        end
+
+        user       = response.user
+        queue_size = totem.add(user)
+        if queue_size == 1
+          response.reply(%{#{user.name}, you now have totem "#{totem_name}".})
+        else
+          response.reply(%{#{user.name}, you are #{(queue_size-1).ordinalize} in line for totem "#{totem_name}".})
+        end
+
+      end
+
+      def add_bak(response)
         totem = response.match_data[:totem]
         unless redis.exists("totem/#{totem}")
           response.reply %{Error: there is no totem "#{totem}".}
