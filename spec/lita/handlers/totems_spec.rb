@@ -119,12 +119,16 @@ describe Lita::Handlers::Totems, lita_handler: true do
 
     context "when user has one totem" do
       before do
-        send_message("totems add chicken", as: carl)
+        Timecop.freeze("2014-03-01 11:00:00") do
+          send_message("totems add chicken", as: carl)
+        end
       end
 
       context "someone else is in line" do
         before do
-          send_message("totems add chicken", as: another_user)
+          Timecop.freeze("2014-03-01 12:00:00") do
+            send_message("totems add chicken", as: another_user)
+          end
         end
         it "yields that totem, gives to the next person in line" do
           expect(robot).to receive(:send_messages) do |target, message|
@@ -134,6 +138,20 @@ describe Lita::Handlers::Totems, lita_handler: true do
           send_message("totems yield", as: carl)
           # todo: check for message to other user
           expect(replies.last).to eq("You have yielded the totem to #{another_user.id}.")
+        end
+        it "updates the waiting since value for the new holder" do
+          Timecop.freeze("2014-03-01 13:00:00") do
+            send_message("totems info chicken")
+            expect(replies.last).to eq <<-END
+1. Carl (held for 2h)
+2. Test User (waiting for 1h)
+            END
+            send_message("totems yield", as: carl)
+            send_message("totems info chicken")
+            expect(replies.last).to eq <<-END
+1. Test User (held for 0s)
+            END
+          end
         end
       end
       context "nobody else is in line" do
@@ -215,42 +233,46 @@ describe Lita::Handlers::Totems, lita_handler: true do
 
   describe "info" do
     before do
-      send_message("totems create chicken")
-      send_message("totems create duck")
-      send_message("totems create ball")
-      send_message("totems add chicken", as: carl)
-      send_message("totems add chicken", as: another_user)
-      send_message("totems add duck", as: yet_another_user)
-      send_message("totems add duck", as: carl)
-
+      Timecop.freeze("2014-03-01 12:00:00") do
+        send_message("totems create chicken")
+        send_message("totems create duck")
+        send_message("totems create ball")
+        send_message("totems add chicken", as: carl)
+        send_message("totems add chicken", as: another_user)
+        send_message("totems add duck", as: yet_another_user)
+        send_message("totems add duck", as: carl)
+      end
     end
     context "totem is passed" do
       it "shows info for just that totem" do
-        send_message("totems info chicken")
-        expect(replies.last).to eq <<-END
-1. Carl
-2. Test User
-        END
-
+        Timecop.freeze("2014-03-01 13:00:00") do
+          send_message("totems info chicken")
+          expect(replies.last).to eq <<-END
+1. Carl (held for 1h)
+2. Test User (waiting for 1h)
+          END
+        end
       end
     end
 
     context "totem isn't passed" do
       it "shows info for all totems" do
-        send_message("totems info")
-        expect(replies.last).to include <<-END
+        Timecop.freeze("2014-03-02 13:00:00") do
+          send_message("totems info")
+          expect(replies.last).to include <<-END
 - chicken
-  1. Carl
-  2. Test User
-        END
-        expect(replies.last).to include <<-END
+  1. Carl (held for 1d 1h)
+  2. Test User (waiting for 1d 1h)
+          END
+          expect(replies.last).to include <<-END
 - duck
-  1. person_2
-  2. Carl
-        END
-        expect(replies.last).to include <<-END
+  1. person_2 (held for 1d 1h)
+  2. Carl (waiting for 1d 1h)
+          END
+          expect(replies.last).to include <<-END
 - ball
-        END
+          END
+        end
       end
     end
 

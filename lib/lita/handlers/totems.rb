@@ -1,6 +1,7 @@
 require "lita"
 require 'active_support/core_ext/integer/inflections'
 require 'active_support/core_ext/object/blank'
+require 'chronic_duration'
 require 'redis-semaphore'
 
 module Lita
@@ -70,6 +71,7 @@ module Lita
           redis.srem("totems", totem)
           owning_user_id = redis.get("totem/#{totem}/owning_user_id")
           redis.srem("user/#{owning_user_id}/totems", totem) if owning_user_id
+          redis.del("totem/#{totem}/waiting_since")
           response.reply(%{Destroyed totem "#{totem}".})
         else
           response.reply(%{Error: totem "#{totem}" doesn't exist.})
@@ -105,9 +107,11 @@ module Lita
             # take it:
             token_acquired = true
             redis.set("totem/#{totem}/owning_user_id", user_id)
+            redis.hset("totem/#{totem}/waiting_since", user_id, Time.now.to_i)
           else
             # queue:
             queue_size = redis.lpush("totem/#{totem}/list", user_id)
+            redis.hset("totem/#{totem}/waiting_since", user_id, Time.now.to_i)
           end
         end
 
@@ -155,11 +159,13 @@ module Lita
         end
 
         redis.srem("user/#{past_owning_user_id}/totems", totem)
+        redis.hdel("totem/#{totem}/waiting_since", past_owning_user_id)
         robot.send_messages(User.new(past_owning_user_id), %{You have been kicked from totem "#{totem}".})
         next_user_id = redis.lpop("totem/#{totem}/list")
         redis.set("totem/#{totem}/owning_user_id", next_user_id)
         if next_user_id
           redis.sadd("user/#{next_user_id}/totems", totem)
+          redis.hset("totem/#{totem}/waiting_since", next_user_id, Time.now.to_i)
           robot.send_messages(User.new(next_user_id), %{You are now in possession of totem "#{totem}".})
         end
 
@@ -190,21 +196,27 @@ module Lita
         str      = ''
         first_id = redis.get("totem/#{totem}/owning_user_id")
         if first_id
-
-          str  += "#{prefix}1. #{users_cache[first_id].name}\n"
+          waiting_since_hash = redis.hgetall("totem/#{totem}/waiting_since")
+          str  += "#{prefix}1. #{users_cache[first_id].name} (held for #{waiting_duration(waiting_since_hash[first_id])})\n"
           rest = redis.lrange("totem/#{totem}/list", 0, -1)
           rest.each_with_index do |user_id, index|
-            str += "#{prefix}#{index+2}. #{users_cache[user_id].name}\n"
+            str += "#{prefix}#{index+2}. #{users_cache[user_id].name} (waiting for #{waiting_duration(waiting_since_hash[user_id])})\n"
           end
         end
         str
       end
 
+      def waiting_duration(time)
+        ChronicDuration.output(Time.now.to_i - time.to_i, format: :short) || "0s"
+      end
+
       def yield_totem(totem, user_id, response)
         redis.srem("user/#{user_id}/totems", totem)
+        redis.hdel("totem/#{totem}/waiting_since", user_id)
         next_user_id = redis.lpop("totem/#{totem}/list")
         if next_user_id
           redis.sadd("user/#{next_user_id}/totems", totem)
+          redis.hset("totem/#{totem}/waiting_since", next_user_id, Time.now.to_i)
           robot.send_messages(User.new(next_user_id), %{You are now in possession of totem "#{totem}."})
           response.reply "You have yielded the totem to #{next_user_id}."
         else
