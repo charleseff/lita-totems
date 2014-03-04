@@ -97,7 +97,7 @@ describe Lita::Handlers::Totems, lita_handler: true do
         end
         it "adds user to the queue" do
           send_message("totems add chicken", as: carl)
-          expect(replies.last).to eq('Carl, you are 2nd in line for totem "chicken".')
+          expect(replies.last).to eq('Carl, you are #2 in line for totem "chicken".')
         end
       end
     end
