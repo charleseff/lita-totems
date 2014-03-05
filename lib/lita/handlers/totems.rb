@@ -1,6 +1,4 @@
-require "lita"
-require 'active_support/core_ext/integer/inflections'
-require 'active_support/core_ext/object/blank'
+require 'lita'
 require 'redis-semaphore'
 
 module Lita
@@ -101,7 +99,7 @@ module Lita
         token_acquired = false
         queue_size     = nil
         Redis::Semaphore.new("totem/#{totem}", redis: redis).lock do
-          if redis.llen("totem/#{totem}/list") == 0 && redis.get("totem/#{totem}/owning_user_id").blank?
+          if redis.llen("totem/#{totem}/list") == 0 && redis.get("totem/#{totem}/owning_user_id").nil?
             # take it:
             token_acquired = true
             redis.set("totem/#{totem}/owning_user_id", user_id)
@@ -115,7 +113,7 @@ module Lita
           redis.sadd("user/#{user_id}/totems", totem)
           response.reply(%{#{response.user.name}, you now have totem "#{totem}".})
         else
-          response.reply(%{#{response.user.name}, you are #{queue_size.ordinalize} in line for totem "#{totem}".})
+          response.reply(%{#{response.user.name}, you are \##{queue_size} in line for totem "#{totem}".})
         end
 
       end
@@ -167,7 +165,7 @@ module Lita
 
       def info(response)
         totem_param = response.match_data[:totem]
-        resp        = if totem_param.present?
+        resp        = unless totem_param.nil? || totem_param.empty?
                         list_users_print(totem_param)
                       else
                         users_cache = new_users_cache
