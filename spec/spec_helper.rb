@@ -1,4 +1,5 @@
 require "simplecov"
+require 'timecop'
 require "coveralls"
 SimpleCov.formatter = SimpleCov::Formatter::MultiFormatter[
   SimpleCov::Formatter::HTMLFormatter,
