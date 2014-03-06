@@ -128,11 +128,12 @@ describe Lita::Handlers::Totems, lita_handler: true do
         before do
           Timecop.freeze("2014-03-01 12:00:00") do
             send_message("totems add chicken", as: another_user)
+            send_message("totems add chicken", as: yet_another_user)
           end
         end
         it "yields that totem, gives to the next person in line" do
           expect(robot).to receive(:send_messages) do |target, message|
-            expect(target.id).to eq(another_user.id)
+            expect(target.user.id).to eq(another_user.id)
             expect(message).to eq(%{You are now in possession of totem "chicken."})
           end
           send_message("totems yield", as: carl)
@@ -145,11 +146,13 @@ describe Lita::Handlers::Totems, lita_handler: true do
             expect(replies.last).to eq <<-END
 1. Carl (held for 2h)
 2. Test User (waiting for 1h)
+3. person_2 (waiting for 1h)
             END
             send_message("totems yield", as: carl)
             send_message("totems info chicken")
             expect(replies.last).to eq <<-END
 1. Test User (held for 0s)
+2. person_2 (waiting for 1h)
             END
           end
         end
@@ -210,7 +213,7 @@ describe Lita::Handlers::Totems, lita_handler: true do
       end
       it "should notify that user that she has been kicked" do
         expect(robot).to receive(:send_messages) do |target, message|
-          expect(target.id).to eq(another_user.id)
+          expect(target.user.id).to eq(another_user.id)
           expect(message).to eq(%{You have been kicked from totem "chicken".})
         end
         send_message("totems kick chicken")

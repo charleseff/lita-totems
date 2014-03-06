@@ -158,13 +158,13 @@ module Lita
 
         redis.srem("user/#{past_owning_user_id}/totems", totem)
         redis.hdel("totem/#{totem}/waiting_since", past_owning_user_id)
-        robot.send_messages(User.new(past_owning_user_id), %{You have been kicked from totem "#{totem}".})
+        robot.send_messages(Lita::Source.new(user: Lita::User.new(past_owning_user_id)), %{You have been kicked from totem "#{totem}".})
         next_user_id = redis.lpop("totem/#{totem}/list")
         redis.set("totem/#{totem}/owning_user_id", next_user_id)
         if next_user_id
           redis.sadd("user/#{next_user_id}/totems", totem)
           redis.hset("totem/#{totem}/waiting_since", next_user_id, Time.now.to_i)
-          robot.send_messages(User.new(next_user_id), %{You are now in possession of totem "#{totem}".})
+          robot.send_messages(Lita::Source.new(user: Lita::User.new(next_user_id)), %{You are now in possession of totem "#{totem}".})
         end
 
       end
@@ -215,7 +215,7 @@ module Lita
         if next_user_id
           redis.sadd("user/#{next_user_id}/totems", totem)
           redis.hset("totem/#{totem}/waiting_since", next_user_id, Time.now.to_i)
-          robot.send_messages(User.new(next_user_id), %{You are now in possession of totem "#{totem}."})
+          robot.send_messages(Lita::Source.new(user: Lita::User.new(next_user_id)), %{You are now in possession of totem "#{totem}."})
           response.reply "You have yielded the totem to #{next_user_id}."
         else
           response.reply %{You have yielded the "#{totem}" totem.}
