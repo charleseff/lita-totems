@@ -108,7 +108,7 @@ module Lita
             redis.hset("totem/#{totem}/waiting_since", user_id, Time.now.to_i)
           else
             # queue:
-            queue_size = redis.lpush("totem/#{totem}/list", user_id)
+            queue_size = redis.rpush("totem/#{totem}/list", user_id)
             redis.hset("totem/#{totem}/waiting_since", user_id, Time.now.to_i)
           end
         end

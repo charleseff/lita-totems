@@ -239,6 +239,7 @@ describe Lita::Handlers::Totems, lita_handler: true do
         send_message("totems create ball")
         send_message("totems add chicken", as: carl)
         send_message("totems add chicken", as: another_user)
+        send_message("totems add chicken", as: yet_another_user)
         send_message("totems add duck", as: yet_another_user)
         send_message("totems add duck", as: carl)
       end
@@ -250,6 +251,7 @@ describe Lita::Handlers::Totems, lita_handler: true do
           expect(replies.last).to eq <<-END
 1. Carl (held for 1h)
 2. Test User (waiting for 1h)
+3. person_2 (waiting for 1h)
           END
         end
       end
@@ -263,6 +265,7 @@ describe Lita::Handlers::Totems, lita_handler: true do
 - chicken
   1. Carl (held for 1d 1h)
   2. Test User (waiting for 1d 1h)
+  3. person_2 (waiting for 1d 1h)
           END
           expect(replies.last).to include <<-END
 - duck
