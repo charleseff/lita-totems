@@ -114,6 +114,7 @@ module Lita
         end
 
         if token_acquired
+          # TODO don't readd to totems you are already waiting for!
           redis.sadd("user/#{user_id}/totems", totem)
           response.reply(%{#{response.user.name}, you now have totem "#{totem}".})
         else
@@ -123,22 +124,29 @@ module Lita
       end
 
       def yield(response)
-        user_id              = response.user.id
-        totems_owned_by_user = redis.smembers("user/#{user_id}/totems")
-        if totems_owned_by_user.empty?
+        user_id               = response.user.id
+        totems_owned_by_user  = redis.smembers("user/#{user_id}/totems")
+        totems_queued_by_user = queued_by_user(user_id)
+        if totems_owned_by_user.empty? && totems_queued_by_user.empty?
           response.reply "Error: You do not have any totems to yield."
-        elsif totems_owned_by_user.size == 1
+        elsif totems_owned_by_user.size == 1 && !response.match_data[:totem]
           yield_totem(totems_owned_by_user[0], user_id, response)
-        else # totems count > 1
+        else
           totem_specified = response.match_data[:totem]
+          # if they don't specify and are only queued for a single totem, yield that one
+          totem_specified = totems_queued_by_user.first if !totem_specified && totems_queued_by_user.size == 1
           if totem_specified
             if totems_owned_by_user.include?(totem_specified)
               yield_totem(totem_specified, user_id, response)
+            elsif totems_queued_by_user.include?(totem_specified)
+              redis.lrem("totem/#{totem_specified}/list", 0, user_id)
+              redis.hdel("totem/#{totem_specified}/waiting_since", user_id)
+              response.reply("You are no longer in line for the \"#{totem_specified}\" totem.")
             else
-              response.reply %{Error: You don't own the "#{totem_specified}" totem.}
+              response.reply %{Error: You don't own and aren't waiting for the "#{totem_specified}" totem.}
             end
           else
-            response.reply "You must specify a totem to yield.  Totems you own: #{totems_owned_by_user.sort}"
+            response.reply "You must specify a totem to yield.  Totems you own: #{totems_owned_by_user.sort}.  Totems you are in line for: #{totems_queued_by_user.sort}."
           end
         end
       end
@@ -226,6 +234,16 @@ module Lita
           response.reply %{You have yielded the "#{totem}" totem.}
         end
       end
+
+      def queued_by_user(user_id)
+        redis.smembers("totems").select do |totem|
+          # there's no easy way to check membership in a list in redis
+          # right now let's iterate through the list, but to make this
+          # more performant we could convert these lists to sorted sets
+          redis.lrange("totem/#{totem}/list", 0, -1).include?(user_id)
+        end
+      end
+
     end
 
     Lita.register_handler(Totems)
