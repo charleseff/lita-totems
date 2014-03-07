@@ -115,6 +115,7 @@ describe Lita::Handlers::Totems, lita_handler: true do
   describe "yield" do
     before do
       send_message("totems create chicken")
+      send_message("totems create duck")
     end
 
     context "when user has one totem" do
@@ -182,7 +183,7 @@ describe Lita::Handlers::Totems, lita_handler: true do
         context "user doesn't have that totem" do
           it "sends error message" do
             send_message("totems yield duck", as: carl)
-            expect(replies.last).to eq(%{Error: You don't own the "duck" totem.})
+            expect(replies.last).to eq(%{Error: You don't own and aren't waiting for the "duck" totem.})
           end
         end
         context "user has that totem" do
@@ -196,12 +197,78 @@ describe Lita::Handlers::Totems, lita_handler: true do
       context "when not specifying a totem" do
         it "sends a message about which totem it can yield" do
           send_message("totems yield", as: carl)
-          expect(replies.last).to eq(%{You must specify a totem to yield.  Totems you own: ["chicken", "#{other_totem}"]})
+          expect(replies.last).to eq(%{You must specify a totem to yield.  Totems you own: ["chicken", "#{other_totem}"].  Totems you are in line for: [].})
         end
       end
-
+    end
+    context "when the user is in line for a single totem" do
+      before do
+        Timecop.freeze("2014-03-02 13:00:00") do
+          send_message("totems add chicken", as: another_user)
+          send_message("totems add chicken", as: carl)
+        end
+      end
+      context "when specifying a totem" do
+        context "user is not in line for that totem" do
+          it "sends error message" do
+            send_message("totems yield duck", as: carl)
+            expect(replies.last).to eq(%{Error: You don't own and aren't waiting for the "duck" totem.})
+          end
+        end
+        context "user is in line for that totem" do
+          it "yields totem and does not update holder" do
+            Timecop.freeze("2014-03-02 14:00:00") do
+              send_message("totems yield chicken", as: carl)
+              expect(replies.last).to eq(%{You are no longer in line for the "chicken" totem.})
+              send_message("totems info chicken")
+              expect(replies.last).to eq("1. Test User (held for 1h)\n")
+            end
+          end
+        end
+      end
+      context "when not specifying a totem" do
+        it "yields totem and does not update holder" do
+          Timecop.freeze("2014-03-02 14:00:00") do
+            send_message("totems yield", as: carl)
+            expect(replies.last).to eq(%{You are no longer in line for the "chicken" totem.})
+            send_message("totems info chicken")
+            expect(replies.last).to eq("1. Test User (held for 1h)\n")
+          end
+        end
+      end
     end
 
+    context "when the user is in line for multiple totems" do
+      before do
+        Timecop.freeze("2014-03-02 13:00:00") do
+          send_message("totems add chicken", as: another_user)
+          send_message("totems add chicken", as: carl)
+          send_message("totems add chicken", as: yet_another_user)
+          send_message("totems add duck", as: yet_another_user)
+          send_message("totems add duck", as: carl)
+        end
+      end
+      context "when specifying a totem" do
+        context "user is in line for that totem" do
+          it "yields totem and does not update holder" do
+            Timecop.freeze("2014-03-02 14:00:00") do
+              send_message("totems yield chicken", as: carl)
+              expect(replies.last).to eq(%{You are no longer in line for the "chicken" totem.})
+              send_message("totems info chicken")
+              expect(replies.last).to eq("1. Test User (held for 1h)\n2. person_2 (waiting for 1h)\n")
+            end
+          end
+        end
+      end
+      context "when not specifying a totem" do
+        it "sends error send_destroy_message" do
+          Timecop.freeze("2014-03-02 14:00:00") do
+            send_message("totems yield", as: carl)
+            expect(replies.last).to eq(%{You must specify a totem to yield.  Totems you own: [].  Totems you are in line for: ["chicken", "duck"].})
+          end
+        end
+      end
+    end
   end
 
   describe "kick" do
