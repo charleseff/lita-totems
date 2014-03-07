@@ -98,6 +98,16 @@ module Lita
 
         user_id = response.user.id
 
+        if queued_by_user(user_id).include?(totem)
+          response.reply %{Error: you are already in the queue for "#{totem}".}
+          return
+        end
+
+        if redis.smembers("user/#{user_id}/totems").include?(totem)
+          response.reply %{Error: you already have the totem "#{totem}".}
+          return
+        end
+
         token_acquired = false
         queue_size     = nil
         Redis::Semaphore.new("totem/#{totem}", redis: redis).lock do
@@ -129,12 +139,12 @@ module Lita
         totems_queued_by_user = queued_by_user(user_id)
         if totems_owned_by_user.empty? && totems_queued_by_user.empty?
           response.reply "Error: You do not have any totems to yield."
-        elsif totems_owned_by_user.size == 1 && !response.match_data[:totem]
+        elsif totems_owned_by_user.size == 1 && !response.match_data[:totem] && totems_queued_by_user.empty?
           yield_totem(totems_owned_by_user[0], user_id, response)
         else
           totem_specified = response.match_data[:totem]
           # if they don't specify and are only queued for a single totem, yield that one
-          totem_specified = totems_queued_by_user.first if !totem_specified && totems_queued_by_user.size == 1
+          totem_specified = totems_queued_by_user.first if !totem_specified && totems_queued_by_user.size == 1 && totems_owned_by_user.empty?
           if totem_specified
             if totems_owned_by_user.include?(totem_specified)
               yield_totem(totem_specified, user_id, response)
