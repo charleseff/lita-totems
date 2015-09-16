@@ -10,13 +10,14 @@ module Lita
         %r{
         ^totems?\s+
         (#{action_capture_group})\s+
-        (?<totem>\w+)
+        (?<totem>\w+)\s*
+        (?<message>.*)?
         }x
       end
 
       route(route_regex("add|join|take|queue"), :add,
             help: {
-              'totems add TOTEM' => "Adds yourself to the TOTEM queue, or assigns yourself to the TOTEM if it's unassigned"
+              'totems add TOTEM <MESSAGE>' => "Adds yourself to the TOTEM queue, or assigns yourself to the TOTEM if it's unassigned. Includes optional MESSAGE."
             })
 
       route(
@@ -108,9 +109,12 @@ module Lita
           return
         end
 
+        message = response.match_data[:message]
+
         token_acquired = false
         queue_size     = nil
         Redis::Semaphore.new("totem/#{totem}", redis: redis).lock do
+          redis.hset("totem/#{totem}/message", user_id, message) if message && message != ""
           if redis.llen("totem/#{totem}/list") == 0 && redis.get("totem/#{totem}/owning_user_id").nil?
             # take it:
             token_acquired = true
@@ -176,6 +180,7 @@ module Lita
 
         redis.srem("user/#{past_owning_user_id}/totems", totem)
         redis.hdel("totem/#{totem}/waiting_since", past_owning_user_id)
+        redis.hdel("totem/#{totem}/message", past_owning_user_id)
         robot.send_messages(Lita::Source.new(user: Lita::User.find_by_id(past_owning_user_id)), %{You have been kicked from totem "#{totem}".})
         next_user_id = redis.lpop("totem/#{totem}/list")
         if next_user_id
@@ -215,10 +220,13 @@ module Lita
         first_id = redis.get("totem/#{totem}/owning_user_id")
         if first_id
           waiting_since_hash = redis.hgetall("totem/#{totem}/waiting_since")
+          message_hash = redis.hgetall("totem/#{totem}/message")
           str  += "#{prefix}1. #{users_cache[first_id].name} (held for #{waiting_duration(waiting_since_hash[first_id])})\n"
+          str += "\s\s\s\s#{message_hash[first_id]}\n" if message_hash[first_id]
           rest = redis.lrange("totem/#{totem}/list", 0, -1)
           rest.each_with_index do |user_id, index|
             str += "#{prefix}#{index+2}. #{users_cache[user_id].name} (waiting for #{waiting_duration(waiting_since_hash[user_id])})\n"
+            str += "\s\s\s\s#{message_hash[user_id]}\n" if message_hash[user_id]
           end
         end
         str
@@ -231,6 +239,7 @@ module Lita
       def yield_totem(totem, user_id, response)
         redis.srem("user/#{user_id}/totems", totem)
         redis.hdel("totem/#{totem}/waiting_since", user_id)
+        redis.hdel("totem/#{totem}/message", user_id)
         next_user_id = redis.lpop("totem/#{totem}/list")
         if next_user_id
           redis.set("totem/#{totem}/owning_user_id", next_user_id)
