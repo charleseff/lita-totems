@@ -152,26 +152,28 @@ describe Lita::Handlers::Totems, lita_handler: true do
           end
         end
         it "yields that totem, gives to the next person in line" do
-          expect(robot).to receive(:send_messages) do |target, message|
-            expect(target.user.id).to eq(another_user.id)
-            expect(message).to eq(%{You are now in possession of totem "chicken."})
+          expect(robot).to receive(:send_messages).twice do |target, message|
+            expect([another_user.id, carl.id]).to include(target.user.id)
+            if target.user.id == another_user.id
+              expect(message).to eq(%{You are now in possession of totem "chicken."})
+            elsif target.user.id == carl.id
+              expect(message).to eq("You have yielded the totem to #{another_user.name}.")
+            end
           end
           send_message("totems yield", as: carl)
-          # todo: check for message to other user
-          expect(replies.last).to eq("You have yielded the totem to #{another_user.name}.")
         end
         it "updates the waiting since value for the new holder" do
           Timecop.freeze("2014-03-01 13:00:00") do
             send_message("totems info chicken")
             expect(replies.last).to eq <<-END
 1. Carl (held for 2h)
-2. Test User (waiting for 1h)
+2. person_1 (waiting for 1h)
 3. person_2 (waiting for 1h)
             END
             send_message("totems yield", as: carl)
             send_message("totems info chicken")
             expect(replies.last).to eq <<-END
-1. Test User (held for 0s)
+1. person_1 (held for 0s)
 2. person_2 (waiting for 1h)
             END
           end
@@ -240,7 +242,7 @@ describe Lita::Handlers::Totems, lita_handler: true do
               send_message("totems yield chicken", as: carl)
               expect(replies.last).to eq(%{You are no longer in line for the "chicken" totem.})
               send_message("totems info chicken")
-              expect(replies.last).to eq("1. Test User (held for 1h)\n")
+              expect(replies.last).to eq("1. person_1 (held for 1h)\n")
             end
           end
         end
@@ -251,7 +253,7 @@ describe Lita::Handlers::Totems, lita_handler: true do
             send_message("totems yield", as: carl)
             expect(replies.last).to eq(%{You are no longer in line for the "chicken" totem.})
             send_message("totems info chicken")
-            expect(replies.last).to eq("1. Test User (held for 1h)\n")
+            expect(replies.last).to eq("1. person_1 (held for 1h)\n")
           end
         end
       end
@@ -274,7 +276,7 @@ describe Lita::Handlers::Totems, lita_handler: true do
               send_message("totems yield chicken", as: carl)
               expect(replies.last).to eq(%{You are no longer in line for the "chicken" totem.})
               send_message("totems info chicken")
-              expect(replies.last).to eq("1. Test User (held for 1h)\n2. person_2 (waiting for 1h)\n")
+              expect(replies.last).to eq("1. person_1 (held for 1h)\n2. person_2 (waiting for 1h)\n")
             end
           end
         end
@@ -306,7 +308,7 @@ describe Lita::Handlers::Totems, lita_handler: true do
               send_message("totems yield chicken", as: carl)
               expect(replies.last).to eq(%{You are no longer in line for the "chicken" totem.})
               send_message("totems info chicken")
-              expect(replies.last).to eq("1. Test User (held for 1h)\n2. person_2 (waiting for 1h)\n")
+              expect(replies.last).to eq("1. person_1 (held for 1h)\n2. person_2 (waiting for 1h)\n")
             end
           end
         end
@@ -333,16 +335,16 @@ describe Lita::Handlers::Totems, lita_handler: true do
         send_message("totems add chicken", as: another_user)
         send_message("totems add chicken", as: carl)
       end
-      it "should notify that user that she has been kicked" do
-        expect(robot).to receive(:send_messages) do |target, message|
-          expect(target.user.id).to eq(another_user.id)
-          expect(message).to eq(%{You have been kicked from totem "chicken".})
-        end
-        send_message("totems kick chicken")
-      end
-      it "should notify next user in line that she now has the totem" do
-        send_message("totems kick chicken")
-        expect(replies.last).to eq(%{You are now in possession of totem "chicken".})
+      it "should notify that user that she has been kicked, and notify the next user she now has the totem" do
+        expect(robot).to receive(:send_messages).twice do |target, message|
+            expect([another_user.id, carl.id]).to include(target.user.id)
+            if target.user.id == carl.id
+              expect(message).to eq(%{You are now in possession of totem "chicken".})
+            elsif target.user.id == another_user.id
+              expect(message).to eq(%{You have been kicked from totem "chicken".})
+            end
+          end
+        send_message("totems kick chicken", as: carl)
       end
     end
 
@@ -351,13 +353,16 @@ describe Lita::Handlers::Totems, lita_handler: true do
         send_message("totems add chicken", as: carl)
       end
       it "should notify that user that she has been kicked and clear the owning_user_id" do
-        expect(robot).to receive(:send_messages) do |target, message|
-          expect(target.user.id).to eq(carl.id)
-          expect(message).to eq(%{You have been kicked from totem "chicken".})
+        expect(robot).to receive(:send_messages).twice do |target, message|
+          expect([another_user.id, carl.id]).to include(target.user.id)
+          if target.user.id == carl.id
+            expect(message).to eq(%{You have been kicked from totem "chicken".})
+          elsif target.user.id == another_user.id
+            expect(message).to eq("")
+          end
         end
         send_message("totems kick chicken")
         send_message("totems info chicken")
-        expect(replies.last).to eq ""
       end
     end
 
@@ -388,7 +393,7 @@ describe Lita::Handlers::Totems, lita_handler: true do
           send_message("totems info chicken")
           expect(replies.last).to eq <<-END
 1. Carl (held for 1h)
-2. Test User (waiting for 1h)
+2. person_1 (waiting for 1h)
 3. person_2 (waiting for 1h)
           END
         end
@@ -402,7 +407,7 @@ describe Lita::Handlers::Totems, lita_handler: true do
           expect(replies.last).to include <<-END
 - chicken
   1. Carl (held for 1d 1h)
-  2. Test User (waiting for 1d 1h)
+  2. person_1 (waiting for 1d 1h)
   3. person_2 (waiting for 1d 1h)
           END
           expect(replies.last).to include <<-END
