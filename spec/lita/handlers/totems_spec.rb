@@ -1,16 +1,16 @@
 require "spec_helper"
 
 describe Lita::Handlers::Totems, lita_handler: true do
-  it { routes("totems add foo").to(:add) }
-  it { routes("totem add foo").to(:add) }
-  it { routes("totem join foo").to(:add) }
-  it { doesnt_route("totems add ").to(:add) }
-  it { doesnt_route("tote add foo").to(:add) }
-  it { routes("totems kick foo").to(:kick) }
-  it { routes("totems kick foo bob").to(:kick) }
-  it { routes("totems").to(:info) }
-  it { routes("totems info").to(:info) }
-  it { routes("totems info chicken").to(:info) }
+  it { is_expected.to route("totems add foo").to(:add) }
+  it { is_expected.to route("totem add foo").to(:add) }
+  it { is_expected.to route("totem join foo").to(:add) }
+  it { is_expected.not_to route("totems add ").to(:add) }
+  it { is_expected.not_to route("tote add foo").to(:add) }
+  it { is_expected.to route("totems kick foo").to(:kick) }
+  it { is_expected.to route("totems kick foo bob").to(:kick) }
+  it { is_expected.to route("totems").to(:info) }
+  it { is_expected.to route("totems info").to(:info) }
+  it { is_expected.to route("totems info chicken").to(:info) }
 
   let(:totem_creator) { Class.new do
     def initialize
