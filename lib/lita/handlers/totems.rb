@@ -155,6 +155,7 @@ module Lita
             elsif totems_queued_by_user.include?(totem_specified)
               redis.lrem("totem/#{totem_specified}/list", 0, user_id)
               redis.hdel("totem/#{totem_specified}/waiting_since", user_id)
+              redis.hdel("totem/#{totem_specified}/message", user_id)
               response.reply("You are no longer in line for the \"#{totem_specified}\" totem.")
             else
               response.reply %{Error: You don't own and aren't waiting for the "#{totem_specified}" totem.}
