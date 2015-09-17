@@ -1,6 +1,6 @@
 Gem::Specification.new do |spec|
   spec.name          = "lita-totems"
-  spec.version       = "0.2.0"
+  spec.version       = "0.3.0"
   spec.authors       = ["Charles Finkel", "Vijay Ramesh"]
   spec.email         = ["cf@dropbox.com", "vijay@change.org"]
   spec.description   = %q{Totems handler for Lita)}
@@ -13,7 +13,7 @@ Gem::Specification.new do |spec|
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ["lib"]
 
-  spec.add_runtime_dependency "lita", ">= 2.4"
+  spec.add_runtime_dependency "lita", ">= 4.0"
   spec.add_runtime_dependency "chronic_duration"
   spec.add_runtime_dependency "redis-semaphore"
 
