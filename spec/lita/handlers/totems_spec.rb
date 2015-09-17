@@ -4,6 +4,7 @@ describe Lita::Handlers::Totems, lita_handler: true do
   it { is_expected.to route("totems add foo").to(:add) }
   it { is_expected.to route("totem add foo").to(:add) }
   it { is_expected.to route("totem join foo").to(:add) }
+  it { is_expected.to route("totems add foo message").to(:add) }
   it { is_expected.not_to route("totems add ").to(:add) }
   it { is_expected.not_to route("tote add foo").to(:add) }
   it { is_expected.to route("totems kick foo").to(:kick) }
@@ -11,6 +12,7 @@ describe Lita::Handlers::Totems, lita_handler: true do
   it { is_expected.to route("totems").to(:info) }
   it { is_expected.to route("totems info").to(:info) }
   it { is_expected.to route("totems info chicken").to(:info) }
+
 
   let(:totem_creator) { Class.new do
     def initialize
@@ -121,6 +123,25 @@ describe Lita::Handlers::Totems, lita_handler: true do
         end
       end
 
+      context "with a message" do
+        before do
+          Timecop.freeze("2014-03-01 12:00:00") do
+            send_message("totems add chicken message", as: carl)
+            send_message("totems add chicken", as: another_user)
+            send_message("totems add chicken other message", as: yet_another_user)
+          end
+        end
+        it "includes the message in the totems' info" do
+          Timecop.freeze("2014-03-01 13:00:00") do
+            send_message("totems info chicken")
+            expect(replies.last).to eq <<-END
+1. Carl (held for 1h) - message
+2. person_1 (waiting for 1h)
+3. person_2 (waiting for 1h) - other message
+            END
+          end
+        end
+      end
     end
 
     context "when the totem doesn't exist" do
