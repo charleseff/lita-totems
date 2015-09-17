@@ -127,17 +127,17 @@ describe Lita::Handlers::Totems, lita_handler: true do
         before do
           Timecop.freeze("2014-03-01 12:00:00") do
             send_message("totems add chicken message", as: carl)
-            send_message("totems add chicken other message", as: another_user)
+            send_message("totems add chicken", as: another_user)
+            send_message("totems add chicken other message", as: yet_another_user)
           end
         end
         it "includes the message in the totems' info" do
           Timecop.freeze("2014-03-01 13:00:00") do
             send_message("totems info chicken")
             expect(replies.last).to eq <<-END
-1. Carl (held for 1h)
-    message
+1. Carl (held for 1h) - message
 2. person_1 (waiting for 1h)
-    other message
+3. person_2 (waiting for 1h) - other message
             END
           end
         end
