@@ -1,6 +1,6 @@
 Gem::Specification.new do |spec|
   spec.name          = "lita-totems"
-  spec.version       = "0.2.0"
+  spec.version       = "0.3.0"
   spec.authors       = ["Charles Finkel", "Vijay Ramesh"]
   spec.email         = ["cf@dropbox.com", "vijay@change.org"]
   spec.description   = %q{Totems handler for Lita)}
