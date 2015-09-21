@@ -71,6 +71,7 @@ module Lita
           owning_user_id = redis.get("totem/#{totem}/owning_user_id")
           redis.srem("user/#{owning_user_id}/totems", totem) if owning_user_id
           redis.del("totem/#{totem}/waiting_since")
+          redis.del("totem/#{totem}/message")
           response.reply(%{Destroyed totem "#{totem}".})
         else
           response.reply(%{Error: totem "#{totem}" doesn't exist.})
