@@ -176,7 +176,7 @@ describe Lita::Handlers::Totems, lita_handler: true do
           expect(robot).to receive(:send_messages).twice do |target, message|
             expect([another_user.id, carl.id]).to include(target.user.id)
             if target.user.id == another_user.id
-              expect(message).to eq(%{You are now in possession of totem "chicken."})
+              expect(message).to eq(%{You are now in possession of totem "chicken," yielded by #{carl.name}.})
             elsif target.user.id == carl.id
               expect(message).to eq("You have yielded the totem to #{another_user.name}.")
             end
@@ -362,7 +362,7 @@ describe Lita::Handlers::Totems, lita_handler: true do
             if target.user.id == carl.id
               expect(message).to eq(%{You are now in possession of totem "chicken".})
             elsif target.user.id == another_user.id
-              expect(message).to eq(%{You have been kicked from totem "chicken".})
+              expect(message).to eq(%{You have been kicked from totem "chicken" by #{carl.name}.})
             end
           end
         send_message("totems kick chicken", as: carl)
@@ -377,7 +377,7 @@ describe Lita::Handlers::Totems, lita_handler: true do
         expect(robot).to receive(:send_messages).twice do |target, message|
           expect([another_user.id, carl.id]).to include(target.user.id)
           if target.user.id == carl.id
-            expect(message).to eq(%{You have been kicked from totem "chicken".})
+            expect(message).to eq(%{You have been kicked from totem "chicken" by #{user.name}.})
           elsif target.user.id == another_user.id
             expect(message).to eq("")
           end
