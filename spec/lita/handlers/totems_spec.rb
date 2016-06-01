@@ -400,18 +400,18 @@ describe Lita::Handlers::Totems, lita_handler: true do
         Timecop.freeze("2014-03-02 13:00:00") do
           send_message("totems info")
           expect(replies.last).to include <<-END
-- chicken
+*chicken*
   1. Carl (held for 1d 1h)
   2. Test User (waiting for 1d 1h)
   3. person_2 (waiting for 1d 1h)
           END
           expect(replies.last).to include <<-END
-- duck
+*duck*
   1. person_2 (held for 1d 1h)
   2. Carl (waiting for 1d 1h)
           END
           expect(replies.last).to include <<-END
-- ball
+*ball*
           END
         end
       end
