@@ -204,7 +204,7 @@ module Lita
                         users_cache = new_users_cache
                         r           = "Totems:\n"
                         redis.smembers("totems").each do |totem|
-                          r += "- #{totem}\n"
+                          r += "*#{totem}*\n"
                           r += list_users_print(totem, '  ', users_cache)
                         end
                         r
