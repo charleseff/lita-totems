@@ -7,6 +7,7 @@ Gem::Specification.new do |spec|
   spec.summary       = %q{Adds support to Lita for Totems}
   spec.homepage      = "https://github.com/charleseff/lita-totems"
   spec.license       = "MIT"
+  spec.metadata      = { "lita_plugin_type" => "handler" }
 
   spec.files         = `git ls-files`.split($/)
   spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
@@ -16,6 +17,7 @@ Gem::Specification.new do |spec|
   spec.add_runtime_dependency "lita", ">= 4.0"
   spec.add_runtime_dependency "chronic_duration"
   spec.add_runtime_dependency "redis-semaphore"
+  spec.add_runtime_dependency "signalfx"
 
   spec.add_development_dependency "bundler", "~> 1.3"
   spec.add_development_dependency "rake"

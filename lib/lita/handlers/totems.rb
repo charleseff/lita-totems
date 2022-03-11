@@ -1,10 +1,17 @@
 require 'lita'
 require 'chronic_duration'
 require 'redis-semaphore'
+require 'signalfx'
 
 module Lita
   module Handlers
     class Totems < Handler
+      
+      config :signalfx_token, type: String, required: true
+      
+      def signalfx_client
+        SignalFx.new config.signalfx_token
+      end
 
       def self.route_regex(action_capture_group)
         %r{
@@ -109,6 +116,8 @@ module Lita
           response.reply %{Error: you already have the totem "#{totem}".}
           return
         end
+       
+        send_stats_to_signalFX("totems:add:#{totem}", 1)
 
         message = response.match_data[:message]
 
@@ -241,6 +250,13 @@ module Lita
       end
 
       def yield_totem(totem, user_id, response)
+        waiting_since_hash = redis.hgetall("totem/#{totem}/waiting_since")
+        user_waiting_time_in_seconds = Time.now.to_i - waiting_since_hash[user_id].to_i
+        user_waiting_time_in_minutes = user_waiting_time_in_seconds / 60
+        puts user_waiting_time_in_minutes
+        #send_stats_to_signalFX("user:holding_time:#{user_id}",user_waiting_time_in_minutes)
+        send_stats_to_signalFX("totems:holding_time:#{totem}",user_waiting_time_in_minutes)
+
         redis.srem("user/#{user_id}/totems", totem)
         redis.hdel("totem/#{totem}/waiting_since", user_id)
         redis.hdel("totem/#{totem}/message", user_id)
@@ -265,6 +281,19 @@ module Lita
           # more performant we could convert these lists to sorted sets
           redis.lrange("totem/#{totem}/list", 0, -1).include?(user_id)
         end
+      end
+
+      def send_stats_to_signalFX(metric, value)
+        signalfx_client.send( 
+          gauges:
+           [ 
+             {  
+              :metric => metric,
+              :value => value,
+              :timestamp => (Time.now.to_f * 1000).to_i
+            }
+          ]
+        )
       end
 
     end
